@@ -31,18 +31,25 @@ return function(ngx)
       end
 
       local result1,result2=TarantoolApi[Call](Params)
-
       if result1~=500 then
         ngx.status=result1
         if not result2 then
-          ngx.print("{}")
+          if "PUT"==ngx.req.get_method() then
+            ngx.eof()
+          else
+            ngx.print("{}")
+          end
         elseif type(result2) == "string" then
-          ngx.header["content_type"] = "text/plain"
-          ngx.print(result2)
+          if "PUT"==ngx.req.get_method() then
+            ngx.print(MsgPack.pack(result2))
+          else
+            ngx.header["content_type"] = "text/plain"
+            ngx.print(result2)
+          end
         elseif type(result2) == "table" then
-          ngx.say("PUT"==ngx.req.get_method()and MsgPack.pack(result2)or cjson.encode(result2))
+          ngx.print("PUT"==ngx.req.get_method()and MsgPack.pack(result2)or cjson.encode(result2))
         elseif type(result2) == "number" then
-          ngx.say("PUT"==ngx.req.get_method()and MsgPack.pack(result2)or tostring(result2))
+          ngx.print("PUT"==ngx.req.get_method()and MsgPack.pack(result2)or tostring(result2))
         else
           ngx.status = 500
           ngx.print("PUT"==ngx.req.get_method()and MsgPack.pack({Error={Name="Unexpected response from Tarantool",Data=cjson.encode(result2)}})or '{"Error":{"Name":"Unexpected response from Tarantool","Data":'..cjson.encode(result2).."}}")

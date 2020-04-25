@@ -13,7 +13,10 @@ for Name,_ in pairs(Calls) do
       Head=MsgPack.pack({[0]=Code,[1]=0})
       BBody=MsgPack.pack(Body)
       local len=MsgPack.pack(#Head+#BBody)
-      Socket:send(len)
+      local _,err=Socket:send(len)
+      if err then
+        return nil,nil,true
+      end
       Socket:send(Head)
       Socket:send(BBody)
 
@@ -25,38 +28,53 @@ for Name,_ in pairs(Calls) do
       return Head[0],Data
     end
 
-    local Socket=ngx.socket.tcp()
-    Socket:settimeout(Cfg.Tarantool.Timeout or 1000)
-    Socket:connect(Cfg.Tarantool.Host or 'tarantool',Cfg.Tarantool.Port or 3301)
+    local Socket,err,res
+    local retry
+    repeat
+      retry=false
+      Socket=ngx.socket.tcp()
+      Socket:settimeout(Cfg.Tarantool.Timeout or 1000)
+      Socket:connect(Cfg.Tarantool.Host or 'tarantool',Cfg.Tarantool.Port or 3301)
 
-    --init
-    if Socket:getreusedtimes()==0 then
-      local Version,err=Socket:receive(64) do
-        ngx.log(err and ngx.ERR or ngx.INFO,err or "connected to tarantool version:"..Version)
-      end
-      local Salt=ngx.decode_base64(Socket:receive(44))
-      Socket:receive(20)
+      --init
+      local ReUses=Socket:getreusedtimes()
+      if not ReUses or ReUses==0 then
+        local Version,err=Socket:receive(64) do
+          ngx.log(err and ngx.ERR or ngx.INFO,err or "connected to tarantool version:"..Version)
+        end
+        local BinSalt=Socket:receive(44)
+        retry=not BinSalt
+        if not retry then
+          local Salt=ngx.decode_base64(BinSalt)
+          Socket:receive(20)
 
-      --Auth
-      local first=ngx.sha1_bin(Cfg.Tarantool.AdminPassword)
-      local Salt2=""
-      for i=1,20 do
-        Salt2=Salt2..string.char(string.byte(Salt,i))
+          --Auth
+          local first=ngx.sha1_bin(Cfg.Tarantool.AdminPassword)
+          local Salt2=""
+          for i=1,20 do
+            Salt2=Salt2..string.char(string.byte(Salt,i))
+          end
+          local last=ngx.sha1_bin(Salt2..ngx.sha1_bin(first))
+          local res=""
+          for i=1,20 do
+            res=res..string.char(bit.bxor(string.byte(first,i),string.byte(last,i)))
+          end
+          local err,res=TarantoolReq(Socket,7,{[35]='admin',[33]={"chap-sha1",res}})
+          if err==0 then
+            --ngx.log(ngx.ERR,"Login Successfull!!!!!!!!!!!!!!!!!!!!!!")
+          else
+            ngx.log(ngx.ERR,'Error OR->T:{"Name":"Tarantool does not work","Data":'..(res[49] or '').."}")
+            return 500
+          end
+        end
       end
-      local last=ngx.sha1_bin(Salt2..ngx.sha1_bin(first))
-      local res=""
-      for i=1,20 do
-        res=res..string.char(bit.bxor(string.byte(first,i),string.byte(last,i)))
+      if not retry then
+        err,res,retry=TarantoolReq(Socket,10,{[34]=Name,[33]=arg})
       end
-      local err,res=TarantoolReq(Socket,7,{[35]='admin',[33]={"chap-sha1",res}})
-      if err==0 then
-        ngx.log(ngx.ERR,"Login Successfull!!!!!!!!!!!!!!!!!!!!!!")
-      else
-        ngx.log(ngx.ERR,'Error OR->T:{"Name":"Tarantool does not work","Data":'..res[49].."}")
-        return 500
+      if retry then
+        Socket:close()
       end
-    end
-    local err,res=TarantoolReq(Socket,10,{[34]=Name,[33]=arg})
+    until not retry
     Socket:setkeepalive()
 
     if err==0 then
