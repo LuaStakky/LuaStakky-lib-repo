@@ -33,7 +33,7 @@ for Name,_ in pairs(Calls) do
     repeat
       retry=false
       Socket=ngx.socket.tcp()
-      Socket:settimeouts(Cfg.Tarantool.Timeout or 1000)
+      Socket:settimeouts(Cfg.Tarantool.Timeout or 1000,Cfg.Tarantool.Timeout or 1000,Cfg.Tarantool.Timeout or 1000)
       Socket:connect(Cfg.Tarantool.Host or 'tarantool',Cfg.Tarantool.Port or 3301)
 
       --init
