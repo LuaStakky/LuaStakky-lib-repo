@@ -33,7 +33,7 @@ for Name,_ in pairs(Calls) do
     repeat
       retry=false
       Socket=ngx.socket.tcp()
-      Socket:settimeout(Cfg.Tarantool.Timeout or 1000)
+      Socket:settimeouts(Cfg.Tarantool.Timeout or 1000)
       Socket:connect(Cfg.Tarantool.Host or 'tarantool',Cfg.Tarantool.Port or 3301)
 
       --init
@@ -75,7 +75,7 @@ for Name,_ in pairs(Calls) do
         Socket:close()
       end
     until not retry
-    Socket:setkeepalive()
+    Socket:setkeepalive(5000)
 
     if err==0 then
       --ngx.log(ngx.ERR,'Error OR->T:{"Name":"Tarantool does not work","Data":'..inspect(res[48]).."}")
