@@ -5,7 +5,6 @@ local TarantoolApi=require("TarantoolApi")
 local cjson=require("cjson")
 
 return function(ngx)
-  -- hide `{"params": [...]}` from a user
   ngx.req.read_body()
   local body = ngx.req.get_body_data()
 
@@ -20,6 +19,7 @@ return function(ngx)
   if CallData then
     if body and not pcall(function()
           ParsedBody="PUT"==ngx.req.get_method()and MsgPack.unpack(body)or cjson.decode(body)
+          ngx.header.content_type ="PUT"==ngx.req.get_method()and 'application/x-msgpack'or 'application/json'
         end)then
       ngx.status=400
       ngx.print('{"Error":{"Name":"No json"}}')
