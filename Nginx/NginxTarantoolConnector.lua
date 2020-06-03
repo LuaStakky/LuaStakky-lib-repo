@@ -52,11 +52,11 @@ return function(ngx)
           ngx.print("PUT"==ngx.req.get_method()and MsgPack.pack(result2)or tostring(result2))
         else
           ngx.status = 500
-          ngx.print("PUT"==ngx.req.get_method()and MsgPack.pack({Error={Name="Unexpected response from Tarantool",Data=cjson.encode(result2)}})or '{"Error":{"Name":"Unexpected response from Tarantool","Data":'..cjson.encode(result2).."}}")
+          ngx.print("PUT"==ngx.req.get_method()and MsgPack.pack({Error={Name="Unexpected response from Tarantool"}})or '{"Error":{"Name":"Unexpected response from Tarantool"}}')
         end
       else
         ngx.status=500
-        ngx.print("PUT"==ngx.req.get_method()and MsgPack.pack({Error={Name="Unexpected response from Tarantool",Data=cjson.encode(result2)}})or'{"Error":{"Name":"Tarantool does not work","Data":'..cjson.encode(result2).."}}")
+        ngx.print("PUT"==ngx.req.get_method()and MsgPack.pack({Error={Name="Error when communicating with tarantool"}})or'{"Error":{"Name":"Error when communicating with tarantool"}}')
       end
     end
   else
