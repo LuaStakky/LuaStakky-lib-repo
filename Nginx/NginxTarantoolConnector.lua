@@ -19,7 +19,7 @@ return function(ngx)
   if CallData then
     if body and not pcall(function()
           ParsedBody="PUT"==ngx.req.get_method()and MsgPack.unpack(body)or cjson.decode(body)
-          ngx.header.content_type ="PUT"==ngx.req.get_method()and 'application/x-msgpack'or 'application/json'
+          ngx.header.content_type ="PUT"==ngx.req.get_method()and 'application/x-msgpack; charset=utf-8'or 'application/json; charset=utf-8'
         end)then
       ngx.status=400
       ngx.print('{"Error":{"Name":"No json"}}')
@@ -43,7 +43,7 @@ return function(ngx)
           if "PUT"==ngx.req.get_method() then
             ngx.print(MsgPack.pack(result2))
           else
-            ngx.header["content_type"] = "text/plain"
+            ngx.header["content_type"] = "text/plain; charset=utf-8"
             ngx.print(result2)
           end
         elseif type(result2) == "table" then
